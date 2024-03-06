@@ -1,0 +1,87 @@
+#include <stdio.h>
+#include <conio.h>
+#include <windows.h>
+#include <time.h> // Added time.h header
+
+#define MAX_LEN 100
+#define NUM_WORDS 5
+
+char *words[NUM_WORDS] = {"hello", "world", "type", "tutor", "example"};
+
+void typeTutor();
+
+int main() {
+    typeTutor();
+    return 0;
+}
+
+void typeTutor() {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode;
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleMode(hConsole, &mode);
+    SetConsoleMode(hConsole, mode & ~ENABLE_LINE_INPUT & ~ENABLE_ECHO_INPUT);
+
+    int correct = 0;
+    int incorrect = 0;
+    clock_t start_time, end_time;
+    double typing_time;
+
+    printf("Type the following words:\n");
+
+    start_time = clock();
+
+    for (int i = 0; i < NUM_WORDS; i++) {
+        printf("%s ", words[i]);
+        fflush(stdout);
+
+        char input[MAX_LEN];
+        int index = 0;
+
+        while (1) {
+            char ch = _getch();
+
+            if (ch == '\r') {
+                input[index] = '\0';
+                break;
+            } else if (ch == '\b') {
+                if (index > 0) {
+                    index--;
+                    printf("\b \b");
+                }
+            } else {
+                input[index] = ch;
+                index++;
+
+                if (ch == words[i][index - 1]) {
+                    SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+                    printf("%c", ch);
+                    SetConsoleTextAttribute(hConsole, csbi.wAttributes);
+                    fflush(stdout);
+                } else {
+                    SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+                    printf("%c", ch);
+                    SetConsoleTextAttribute(hConsole, csbi.wAttributes);
+                    fflush(stdout);
+                    MessageBeep(MB_ICONERROR);
+                }
+            }
+        }
+
+        if (strcmp(input, words[i]) == 0) {
+            correct++;
+        } else {
+            incorrect++;
+        }
+
+        printf(" ");
+    }
+
+    end_time = clock();
+    typing_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+    printf("\n\nTyping test completed!\n");
+    printf("Correct words: %d\n", correct);
+    printf("Incorrect words: %d\n", incorrect);
+    printf("Typing time: %.2f seconds\n", typing_time);
+}
