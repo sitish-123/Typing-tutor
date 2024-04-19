@@ -1,0 +1,446 @@
+#include <stdio.h>
+#include <conio.h>
+#include <windows.h>
+#include <time.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#define maxlen 100
+#define nosentence 5
+#define wordlen 5 
+#define maxuser 10
+#define namemax 20
+#define passmax 20
+#define nosession 100
+
+struct user
+{
+    char username[namemax];
+    char password[passmax];
+    int num_sessions;
+};
+
+struct user users[maxuser];
+int num_users = 0;
+struct user current;
+typedef struct user std;
+char *phrases[nosentence] = {
+    "The quick brown fox jumps over the lazy dog.",
+    "Programming is an art.",
+    "Life is like a box of chocolates, you never know what you're gonna get.",
+    "Success is not final, failure is not fatal: It is the courage to continue that counts.",
+    "You miss 100% of the shots you don't take."
+};
+
+char *randomline()
+{
+    return phrases[rand() % nosentence];
+}
+
+void welcome_user()
+{
+    printf("Welcome to the Typing Tutor, %s!\n", current.username);
+    printf("Please type the given phrase and press Enter.\n");
+    printf("Press any key to start...\n");
+    _getch();
+}
+
+void display_phrase(char *phrase)
+{
+
+     text_animation(phrase);
+}
+
+void textcolor(char ch, bool correct)
+{
+    if (correct)
+        printf("%c", ch);
+    else
+    {
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, BACKGROUND_RED);
+        printf("%c", ch);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
+    }
+}
+
+void type_phrase(char *phrase, int *right, int *total_chars, int *errors, double *timetaken, double*wordt)
+{
+    int position = 0;
+    printf("\n Enter your Text Here \U0001F447 \n");
+    clock_t start;
+   
+    
+int x=0;
+    while (1)
+    {
+        char ch = _getch();
+        if(position==0)
+        start = clock();
+        if (ch == '\r')
+        {
+            printf("\n");
+            break;
+        }
+        else if (ch == '\b')
+        {
+            if (position > 0)
+            {
+                position--;
+                printf("\b \b");
+            }
+        }
+        else
+        {
+            (*total_chars)++;
+            if (ch == phrase[position])
+            {
+                (*right)++;
+            }
+            else
+            {
+                (*errors)++;
+                x++;
+            }
+            
+            textcolor(ch, ch == phrase[position]);
+
+            position++;
+        }
+        if (phrase[position+1] == ' ' || phrase[position+1]  == '.' || phrase[position+1]  == ',' || phrase[position+1]  == ';' || phrase[position+1]  == ':' || phrase[position+1]  == '?' || ch == '!' && ch==phrase[position] && x==0)
+        {
+            (*wordt)++;
+            x=0;
+        }
+    }
+
+    clock_t end = clock();
+    *timetaken = (double)(end - start) / CLOCKS_PER_SEC;
+
+    double min = *timetaken / 60.0;
+
+   
+}
+
+int find_user(char *username)
+{
+    int i;
+    for (i = 0; i < num_users; i++)
+    {
+        if (strcmp(users[i].username, username) == 0)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int authenticate_user(char *username, char *password)
+{
+    int position = find_user(username);
+    if (position != -1 && strcmp(users[position].password, password) == 0)
+    {
+        strcpy(current.username, username);
+        return position;
+    }
+    return -1;
+}
+
+void register_new_user(char *username, char *password)
+{
+    if (num_users < maxuser)
+    {
+        strcpy(users[num_users].username, username);
+        strcpy(users[num_users].password, password);
+        users[num_users].num_sessions = 0;
+        num_users++;
+        printf("New user registered successfully!\n");
+    }
+    else
+    {
+        printf("Maximum number of users reached.\n");
+    }
+}
+
+void save_user_data_to_file()
+{
+    FILE *fp;
+    int i;
+
+    fp = fopen("userdata.txt", "w");
+    if (fp == NULL)
+    {
+        printf("Error opening file!\n");
+        return;
+    }
+
+    for (i = 0; i < num_users; i++)
+    {
+        fprintf(fp, "%s %s\n", users[i].username, users[i].password);
+    }
+
+    fclose(fp);
+}
+
+void load_users_from_file()
+{
+    FILE *fp;
+    int i;
+
+    fp = fopen("userdata.txt", "r");
+    if (fp != NULL)
+    {
+        while (fscanf(fp, "%s %s", users[num_users].username, users[num_users].password) != EOF && num_users < maxuser)
+        {
+            num_users++;
+        }
+        fclose(fp);
+    }
+}
+
+void store_session_data(double speed, double accuracy, double wpm)
+{
+    FILE *fp;
+    fp = fopen("record.txt", "a");
+    if (fp == NULL)
+    {
+        printf("Error opening file!\n");
+        return;
+    }
+
+    fprintf(fp, "%.2f %.2f %.2f\n", speed, accuracy, wpm);
+
+    fclose(fp);
+}
+
+void display_session_records()
+{
+    FILE *fp;
+    fp = fopen("record.txt", "r");
+    if (fp == NULL)
+    {
+        printf("No prev records!\n");
+        return;
+    }
+
+    printf("Typing session records for user '%s':\n", current.username);
+    printf("------------------------------------------------\n");
+    printf("Session\tSpeed (s)\tAccuracy %%\tWPM\n");
+    printf("------------------------------------------------\n");
+
+    double speed, accuracy, wpm;
+    int session = 1;
+    while (fscanf(fp, "%lf %lf %lf", &speed, &accuracy, &wpm) != EOF)
+    {
+        printf("%d\t%.2f\t\t%.2f\t\t%.2f\n", session++, speed, accuracy, wpm);
+    }
+
+    printf("------------------------------------------------\n");
+
+    fclose(fp);
+}
+
+void typing_tutor()
+{
+    srand(time(NULL));
+
+    load_users_from_file();
+
+    printf("Would you like to login (L) or register (R) as a new user?\n");
+    char choice;
+    scanf(" %c", &choice);
+
+    if (choice == 'l' || choice == 'L')
+    {
+        char username[namemax];
+        char password[passmax];
+
+        printf("Enter your username: ");
+        scanf("%s", username);
+
+        printf("Enter your password: ");
+        scanf("%s", password);
+
+        int position = authenticate_user(username, password);
+        if (position != -1)
+        {
+            printf("Login successful!\n");
+            display_session_records(); 
+        }
+        else
+        {
+            printf("Incorrect username or password!\n");
+            return;
+        }
+    }
+    else if (choice == 'r' || choice == 'R')
+    {
+        char new_username[namemax];
+        char new_password[passmax];
+
+        printf("Choose a username: ");
+        scanf("%s", new_username);
+        if (strlen(new_username) >= namemax)
+        {
+            printf("Username too long. Please choose a shorter one.\n");
+            return;
+        }
+
+        if (find_user(new_username) != -1)
+        {
+            printf("Username already taken. Please choose a different one.\n");
+            return;
+        }
+
+        printf("Choose a password: ");
+        scanf("%s", new_password);
+        if (strlen(new_password) >= passmax)
+        {
+            printf("Password too long. Please choose a shorter one.\n");
+            return;
+        }
+
+        register_new_user(new_username, new_password);
+        save_user_data_to_file(); 
+    }
+    else
+    {
+        printf("Invalid choice.\n");
+        return;
+    }
+
+    welcome_user();
+
+    char *phrase = randomline();
+    display_phrase(phrase);
+
+    int right = 0;
+    int total_chars = 0;
+    int errors = 0;
+    double timetaken = 0;
+    double wordt=1;
+
+    type_phrase(phrase, &right, &total_chars, &errors, &timetaken, &wordt);
+
+    double accuracy = ((double)right / total_chars) * 100;
+    
+    double wpm = ((wordt+1) / timetaken) * 60.0;
+
+    printf("Errors: %d\n", errors);
+    printf("Accuracy: %.2f%%\n", accuracy);
+    printf("Typing speed (WPM): %.2f\n", wpm);
+
+    store_session_data(timetaken, accuracy, wpm);
+}
+void typing_part()
+{
+    printf("Happy to see you here again \U0001F91D!\n");
+
+    char *phrase = randomline();
+    display_phrase(phrase);
+
+    int right = 0;
+    int total_chars = 0;
+    int errors = 0;
+    double timetaken = 0;
+    double wordt= 0;
+
+    type_phrase(phrase, &right, &total_chars, &errors, &timetaken, &wordt);
+
+    double accuracy = ((double)right / total_chars) * 100;
+    double wpm = (wordt / timetaken) * 60.0;
+
+    printf("Errors: %d\n", errors);
+    printf("Accuracy: %.2f%%\n", accuracy);
+    printf("Typing speed (WPM): %.2f\n", wpm);
+    store_session_data(timetaken, accuracy, wpm);
+}
+void print_animation(char *text) {
+    system("color 70");
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD written;
+    int screenWidth, screenHeight;
+    int len = strlen(text);
+
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    screenWidth = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    screenHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+
+ 
+    COORD coord = { screenWidth, screenHeight };
+    SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+
+ 
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        system("color 70");
+
+
+    int startX = (screenWidth - len) / 2;
+    int startY = screenHeight / 2;
+
+    for (int i = 0; i < len; i++) {
+        for (int j = 0; j < startY; j++) {
+            printf("\n");
+        }
+        for (int j = 0; j < startX; j++) {
+            printf(" ");
+        }
+        printf("%.*s\n", i + 1, text); 
+        fflush(stdout);
+       
+        Sleep(100); 
+        if(i==len-1)
+        continue;
+        system("cls"); 
+    }
+    sleep(1);
+  
+    for (int i = len - 1; i >= 0; i--) {
+        for (int j = 0; j < startY; j++) {
+            printf("\n");
+        }
+        for (int j = 0; j < startX; j++) {
+            printf(" ");
+        }
+        printf("%.*s\n", i + 1, text); 
+        fflush(stdout);
+        Sleep(50);
+      
+        system("cls"); 
+}
+}
+void text_animation(char *text) {
+    
+
+   while (*text != '\0') {
+        putchar(*text++);
+        fflush(stdout); 
+        Sleep(100); 
+    }
+}
+int main()
+{
+     system("color 70");
+    print_animation("Welcome to Typing Tutor \U0001F609");
+    system ("cls");
+    char a;
+    system("color 70");
+    typing_tutor();
+    while(1)
+    {
+        printf("Do you want to keep playing \u2328? (y/n): ");
+        scanf(" %c", &a);
+        if(a == 'y' || a == 'Y'){
+            system ("cls");
+            system("color 70");
+            typing_part();
+        }
+        else if (a == 'n' || a == 'N'){
+            print_animation("Exiting \U0001F97A\U0001F97A byebye......");
+          
+            return 0;
+        }
+        else
+            text_animation("I guess you dont want to leave \U0001F60F. Please type 'y' to continue or 'n' to exit.\n");
+    }
+}
